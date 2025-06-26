@@ -94,6 +94,8 @@ const navLinks = document.querySelectorAll('.nav-link');
 const contentSections = document.querySelectorAll('.content-section');
 const contactForm = document.getElementById('contact-form');
 const formSuccess = document.getElementById('form-success');
+const hamburger = document.getElementById('hamburger');
+const navMenu = document.getElementById('nav-menu');
 
 // Initialize the page
 document.addEventListener('DOMContentLoaded', () => {
@@ -101,33 +103,69 @@ document.addEventListener('DOMContentLoaded', () => {
     displayAllPosts();
     setupNavigation();
     setupContactForm();
+    setupEventListeners();
 });
 
-// Display featured posts on home page
+// Setup event listeners
+function setupEventListeners() {
+    // Hamburger menu toggle
+    hamburger.addEventListener('click', toggleMenu);
+    
+    // Search functionality
+    searchBtn.addEventListener('click', searchPosts);
+    searchInput.addEventListener('keyup', (e) => {
+        if (e.key === 'Enter') {
+            searchPosts();
+        }
+    });
+    
+    // Read more buttons
+    document.addEventListener('click', (e) => {
+        if (e.target.matches('.read-more')) {
+            const postId = parseInt(e.target.dataset.postId);
+            showFullPost(postId);
+        }
+    });
+}
+
+// Toggle mobile menu
+function toggleMenu() {
+    navMenu.classList.toggle('show');
+    hamburger.setAttribute('aria-expanded', navMenu.classList.contains('show'));
+    
+    // Close menu when clicking on a link
+    if (navMenu.classList.contains('show')) {
+        document.querySelectorAll('#nav-menu a').forEach(link => {
+            link.addEventListener('click', () => {
+                navMenu.classList.remove('show');
+                hamburger.setAttribute('aria-expanded', 'false');
+            });
+        });
+    }
+}
+
 function displayFeaturedPosts() {
     const featuredPosts = blogPosts.filter(post => post.featured);
     renderPosts(featuredPosts, featuredPostsContainer);
 }
 
-// Display all posts on posts page
 function displayAllPosts() {
     renderPosts(blogPosts, allPostsContainer);
 }
 
-// Render posts to a container
 function renderPosts(posts, container) {
     container.innerHTML = '';
-    
+
     if (posts.length === 0) {
         container.innerHTML = '<p class="no-posts">No posts found. Try a different search.</p>';
         return;
     }
-    
+
     posts.forEach(post => {
         const postElement = document.createElement('article');
         postElement.className = 'blog-post';
         postElement.id = `post-${post.id}`;
-        
+
         postElement.innerHTML = `
             <img src="${post.image}" alt="${post.title}" class="post-image" loading="lazy">
             <div class="post-content">
@@ -137,20 +175,17 @@ function renderPosts(posts, container) {
                 <button class="read-more" data-post-id="${post.id}">Read More</button>
             </div>
         `;
-        
+
         container.appendChild(postElement);
     });
 }
 
-// Show full post with comments (updated version)
 function showFullPost(postId) {
     const post = blogPosts.find(p => p.id === postId);
     if (!post) return;
-    
-    // Hide all sections
+
     contentSections.forEach(section => section.classList.remove('active'));
-    
-    // Create a temporary section for the single post view
+
     let singlePostSection = document.getElementById('single-post-section');
     if (!singlePostSection) {
         singlePostSection = document.createElement('section');
@@ -161,39 +196,33 @@ function showFullPost(postId) {
         singlePostSection.innerHTML = '';
         singlePostSection.classList.add('active');
     }
-    
+
     singlePostSection.innerHTML = `
         <button onclick="goBack()" class="back-btn">← Back to Posts</button>
         <article class="blog-post single-post">
             <div class="post-header">
-                <img src="${post.image}" alt="${post.title}" class="post-image-large">
+                <img src="${post.image}" alt="${post.title}" class="post-image-large" loading="lazy">
                 <div class="post-header-text">
                     <h1 class="post-title">${escapeHTML(post.title)}</h1>
                     <div class="post-meta">Published on ${post.date} • ${post.category}</div>
                 </div>
             </div>
             <div class="post-full-content">${paragraphize(post.content)}</div>
-            
             <div class="comments-container">
                 <h2 class="comments-heading">Comments (${post.comments.length})</h2>
-                
                 <div class="comments-list" id="comments-list-${postId}">
-                    ${post.comments.length > 0 ? 
-                        post.comments.map(comment => `
-                            <div class="comment-card">
-                                <div class="comment-header">
-                                    <div class="comment-author">${escapeHTML(comment.name)}</div>
-                                    <div class="comment-date">${comment.date}</div>
-                                </div>
-                                <div class="comment-body">
-                                    <p>${escapeHTML(comment.message)}</p>
-                                </div>
+                    ${post.comments.length > 0 ? post.comments.map(comment => `
+                        <div class="comment-card">
+                            <div class="comment-header">
+                                <div class="comment-author">${escapeHTML(comment.name)}</div>
+                                <div class="comment-date">${comment.date}</div>
                             </div>
-                        `).join('') : 
-                        '<p class="no-comments">No comments yet. Be the first to comment!</p>'
-                    }
+                            <div class="comment-body">
+                                <p>${escapeHTML(comment.message)}</p>
+                            </div>
+                        </div>
+                    `).join('') : '<p class="no-comments">No comments yet. Be the first to comment!</p>'}
                 </div>
-                
                 <div class="comment-form-container">
                     <h3 class="comment-form-title">Leave a Comment</h3>
                     <div class="comment-form">
@@ -209,28 +238,23 @@ function showFullPost(postId) {
             </div>
         </article>
     `;
-    
-    // Scroll to the top of the section
+
     singlePostSection.scrollIntoView({ behavior: 'smooth' });
 }
 
-// Go back to previous view
 function goBack() {
     const singlePostSection = document.getElementById('single-post-section');
     if (singlePostSection) {
-        singlePostSection.classList.remove('active');
+        singlePostSection.remove();
     }
-    
-    // Show the posts section
     document.getElementById('posts').classList.add('active');
     document.querySelector('a[href="#posts"]').classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// Add a new comment (updated to work with new structure)
 function addComment(postId) {
     const nameInput = document.getElementById(`comment-name-${postId}`);
     const messageInput = document.getElementById(`comment-message-${postId}`);
-    
     const name = nameInput.value.trim();
     const message = messageInput.value.trim();
     
@@ -249,8 +273,6 @@ function addComment(postId) {
     };
     
     post.comments.push(newComment);
-    
-    // Update the comments list
     const commentsList = document.getElementById(`comments-list-${postId}`);
     const noCommentsMsg = commentsList.querySelector('.no-comments');
     
@@ -271,57 +293,44 @@ function addComment(postId) {
     `;
     
     commentsList.appendChild(commentElement);
-    
-    // Clear the form
     nameInput.value = '';
     messageInput.value = '';
     
-    // Update comment count
     const commentsHeading = document.querySelector('.comments-heading');
     if (commentsHeading) {
         commentsHeading.textContent = `Comments (${post.comments.length})`;
     }
 }
 
-// Search functionality
 function searchPosts() {
     const searchTerm = searchInput.value.toLowerCase();
-    
     if (!searchTerm) {
         displayAllPosts();
         return;
     }
     
-    const filteredPosts = blogPosts.filter(post => 
-        post.title.toLowerCase().includes(searchTerm) || 
+    const filteredPosts = blogPosts.filter(post =>
+        post.title.toLowerCase().includes(searchTerm) ||
         post.content.toLowerCase().includes(searchTerm) ||
         post.excerpt.toLowerCase().includes(searchTerm) ||
         post.category.toLowerCase().includes(searchTerm)
     );
     
     renderPosts(filteredPosts, allPostsContainer);
-    
-    // Show the posts section
     document.querySelector('.content-section.active').classList.remove('active');
     document.getElementById('posts').classList.add('active');
-    
-    // Update active nav link
     navLinks.forEach(link => link.classList.remove('active'));
     document.querySelector('a[href="#posts"]').classList.add('active');
 }
 
-// Setup navigation between sections
 function setupNavigation() {
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            
-            // Update active nav link
             navLinks.forEach(navLink => navLink.classList.remove('active'));
             link.classList.add('active');
-            
-            // Show the corresponding section
             const targetId = link.getAttribute('href');
+            
             contentSections.forEach(section => {
                 section.classList.remove('active');
                 if (section.id === targetId.substring(1)) {
@@ -329,62 +338,51 @@ function setupNavigation() {
                 }
             });
             
-            // Scroll to top
             window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            // Close mobile menu if open
+            if (navMenu.classList.contains('show')) {
+                navMenu.classList.remove('show');
+                hamburger.setAttribute('aria-expanded', 'false');
+            }
         });
     });
 }
 
-// Setup contact form
 function setupContactForm() {
     if (contactForm) {
-        contactForm.addEventListener('submit', (e) => {
+        contactForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            // In a real app, you would send the form data to a server
-            const formData = new FormData(contactForm);
-            const data = Object.fromEntries(formData);
-            console.log('Form submitted:', data);
+            const submitBtn = contactForm.querySelector('.submit-btn');
+            submitBtn.classList.add('loading');
             
-            // Show success message
-            contactForm.style.display = 'none';
-            formSuccess.style.display = 'block';
-            
-            // Reset form
-            contactForm.reset();
+            try {
+                // Simulate form submission
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                contactForm.style.display = 'none';
+                formSuccess.style.display = 'block';
+                contactForm.reset();
+            } catch (error) {
+                alert('Failed to send message. Please try again.');
+            } finally {
+                submitBtn.classList.remove('loading');
+            }
         });
     }
 }
 
-// Helper function to escape HTML
 function escapeHTML(str) {
-    return str.replace(/[&<>'"]/g, 
-        tag => ({
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            "'": '&#39;',
-            '"': '&quot;'
-        }[tag]));
+    return str.replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+    }[tag]));
 }
 
-// Helper function to convert plain text to paragraphs
 function paragraphize(text) {
     return text.split('\n').map(paragraph => paragraph.trim() ? `<p>${paragraph}</p>` : '').join('');
 }
-
-// Event Listeners
-searchBtn.addEventListener('click', searchPosts);
-searchInput.addEventListener('keyup', (e) => {
-    if (e.key === 'Enter') {
-        searchPosts();
-    }
-});
-
-// Event delegation for dynamic elements
-document.addEventListener('click', (e) => {
-    if (e.target.matches('.read-more')) {
-        const postId = parseInt(e.target.dataset.postId);
-        showFullPost(postId);
-    }
-});
